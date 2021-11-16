@@ -493,6 +493,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
     //returns an expired call back to the short
     function returnExpired(uint[] memory _calls) public nonReentrant {
+        calculateDifferences();
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {
             Call storage call = calls[_calls[i]];
@@ -504,12 +505,13 @@ contract HedgeyCeloCalls is ReentrancyGuard {
             emit OptionReturned(_calls[i]);
         }
         withdrawPymt(asset, msg.sender, _totalAssetAmount);
-        
+        calculateDifferences();
     }
     
     
     
     function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable public {
+        calculateDifferences();
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {
             Call storage call = calls[_calls[i]];
@@ -531,6 +533,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         }
         calls[c++] = Call(msg.sender, _assetAmount, _minimumPurchase, _newStrike, _totalPurch, _newPrice, _newExpiry, false, true, msg.sender, false);
         emit NewAsk(c.sub(1), _assetAmount, _minimumPurchase, _newStrike, _newPrice, _newExpiry);
+        calculateDifferences();
     }
 
     

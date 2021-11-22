@@ -31,7 +31,6 @@ contract HedgeyPutsFactory {
         require(pairs[asset][pymtCurrency] == address(0), "contract exists");
         HedgeyPuts putContract = new HedgeyPuts(asset, pymtCurrency, collector, fee);
         pairs[asset][pymtCurrency] = address(putContract);
-        //totalContracts.push(address(putContract));
         emit NewPairCreated(asset, pymtCurrency, address(putContract));
     }
 

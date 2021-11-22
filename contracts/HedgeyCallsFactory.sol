@@ -31,7 +31,7 @@ contract HedgeyCallsFactory {
    
     
     function createContract(address asset, address pymtCurrency) public {
-        //require(asset != pymtCurrency, "same currencies");
+        require(asset != pymtCurrency, "same currencies");
         require(pairs[asset][pymtCurrency] == address(0), "contract exists");
         HedgeyCalls callContract = new HedgeyCalls(asset, pymtCurrency, collector, fee);
         pairs[asset][pymtCurrency] = address(callContract);

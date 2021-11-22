@@ -18,6 +18,7 @@ interface IHedgeySwap {
 }
 
 
+
 contract HedgeyPuts is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
@@ -37,17 +38,16 @@ contract HedgeyPuts is ReentrancyGuard {
     
 
     constructor(address _asset, address _pymtCurrency, address payable _feeCollector, uint _fee) public {
+        require(_asset != _pymtCurrency);
         asset = _asset;
         pymtCurrency = _pymtCurrency;
         feeCollector = _feeCollector;
         fee = _fee;
         assetDecimals = IERC20(_asset).decimals();
         uniPair = IUniswapV2Factory(uniFactory).getPair(_asset, _pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
-        }
+        } 
         if (_asset == weth) {
             assetWeth = true;
             pymtWeth = false;
@@ -331,21 +331,20 @@ contract HedgeyPuts is ReentrancyGuard {
             put.tradeable = false; 
             emit NewOptionBought(_p);
         } else {
-            uint proRataPurchase = _assetAmt.mul(10 ** assetDecimals).div(put.assetAmt);
             uint pricePerToken = put.price.mul(10 ** 32).div(put.assetAmt);
             uint proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
             require(_price == proRataPrice, "p: price doesnt match pro rata price");
             require(put.assetAmt.sub(_assetAmt) >= put.minimumPurchase, "p: remainder too small");
             uint balCheck = pymtWeth ? msg.value : IERC20(pymtCurrency).balanceOf(msg.sender);
             require(balCheck >= proRataPrice, "p: not enough to buy this put");
-            uint proRataTotalPurchase = put.totalPurch.mul(proRataPurchase).div(10 ** assetDecimals);
+            uint proRataTotalPurchase = _assetAmt.mul(_strike).div(10 ** assetDecimals);
             transferPymtWithFee(pymtWeth, pymtCurrency, msg.sender, put.short, proRataPrice);
             puts[p++] = Put(put.short, _assetAmt, put.minimumPurchase, put.strike, proRataTotalPurchase, _price, _expiry, true, false, msg.sender, false);
-            emit PoolOptionBought(_p, p.sub(1), put.assetAmt.sub(_assetAmt), put.minimumPurchase, _strike, _price, _expiry);
+            emit PoolOptionBought(_p, p.sub(1), _assetAmt, _strike, _price, _expiry);
             //update the current call to become the remainder
             put.assetAmt -= _assetAmt;
             put.price -= _price;
-            put.totalPurch -= proRataTotalPurchase;
+            put.totalPurch = put.assetAmt.mul(_strike).div(10 ** assetDecimals);
         }
         
     }    
@@ -386,7 +385,7 @@ contract HedgeyPuts is ReentrancyGuard {
     //function to set a price of a put as the long, or to turn the open order off
     function setPrice(uint _p, uint _price, bool _tradeable) public {
         Put storage put = puts[_p];
-        require((msg.sender == put.long && msg.sender == put.short) || (msg.sender == put.long && put.open), "p: you cant change the price");
+        require((msg.sender == put.long && msg.sender == put.short && _tradeable) || (msg.sender == put.long && put.open), "p: you cant change the price");
         require(put.expiry > now);
         require(!put.exercised);
         put.price = _price;
@@ -525,8 +524,7 @@ contract HedgeyPuts is ReentrancyGuard {
         require(newOwner != put.short, "p: you cannot transfer to the short");
         put.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            require(Address.isContract(newOwner));
-            require(path.length > 2, "use the normal cash close method for single pool swaps");
+            //require(path.length > 2, "use the normal cash close method for single pool swaps");
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == pymtCurrency && path[path.length - 1] == asset, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyPutSwap(msg.sender, _p, put.assetAmt, path);
@@ -566,10 +564,10 @@ contract HedgeyPuts is ReentrancyGuard {
     event OpenOptionPurchased(uint _i);
     event OptionChanged(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
     event PriceSet(uint _i, uint _price, bool _tradeable);
-    event OptionExercised(uint _i, bool cashClosed);
+    event OptionExercised(uint _i, bool _cashClosed);
     event OptionReturned(uint _i);
     event OptionCancelled(uint _i);
-    event OptionTransferred(uint _i, address newOwner);
-    event PoolOptionBought(uint i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionTransferred(uint _i, address _newOwner);
+    event PoolOptionBought(uint _i, uint _j, uint _assetAmt, uint _strike, uint _price, uint _expiry);
     event AMMUpdate(bool _cashCloseOn);
 }

@@ -16,6 +16,7 @@ interface IHedgeySwap {
 
 
 
+
 contract HedgeyCalls is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
@@ -42,9 +43,7 @@ contract HedgeyCalls is ReentrancyGuard {
         fee = _fee;
         assetDecimals = IERC20(_asset).decimals();
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
         }
         
@@ -329,33 +328,25 @@ contract HedgeyCalls is ReentrancyGuard {
             call.tradeable = false;
             emit NewOptionBought(_c);
         } else {
-            uint proRataPurchase = _assetAmt.mul(10 ** assetDecimals).div(call.assetAmt);
             uint pricePerToken = call.price.mul(10 ** 32).div(call.assetAmt);
             uint proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
             require(_price == proRataPrice, "c: price doesnt match pro rata price");
             require(call.assetAmt.sub(_assetAmt) >= call.minimumPurchase, "c: remainder too small");
             uint balCheck = pymtWeth ? msg.value : IERC20(pymtCurrency).balanceOf(msg.sender);
             require(balCheck >= proRataPrice, "c: not enough to sell this call option");
-            uint proRataTotalPurchase = call.totalPurch.mul(proRataPurchase).div(10 ** assetDecimals);
+            uint proRataTotalPurchase = _assetAmt.mul(_strike).div(10 ** assetDecimals);
             transferPymtWithFee(pymtWeth, pymtCurrency, msg.sender, call.short, proRataPrice);
             calls[c++] = Call(call.short, _assetAmt, call.minimumPurchase, call.strike, proRataTotalPurchase, _price, _expiry, true, false, msg.sender, false);
-            emit PoolOptionBought(_c, c.sub(1), call.assetAmt.sub(_assetAmt), call.minimumPurchase, _strike, _price, _expiry);
+            emit PoolOptionBought(_c, c.sub(1), _assetAmt, _strike, _price, _expiry);
             //update the current call to become the remainder
             call.assetAmt -= _assetAmt;
             call.price -= _price;
-            call.totalPurch -= proRataTotalPurchase;
+            call.totalPurch = call.assetAmt.mul(_strike).div(10 ** assetDecimals);
             
         }
         
     }
     
-    /*
-    function proRataPrice(uint _c, uint _assetAmt) public view returns (uint proRataPurchase, uint pricePerToken, uint proRataPrice) {
-        Call storage call = calls[_c];
-        proRataPurchase = _assetAmt.mul(10 ** assetDecimals).div(call.assetAmt);
-        pricePerToken = call.price.mul(10 ** 32).div(call.assetAmt);
-        proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
-    }**/
     
 
     
@@ -392,7 +383,7 @@ contract HedgeyCalls is ReentrancyGuard {
     //this function lets the long set a new price on the call - typically used for existing open positions
     function setPrice(uint _c, uint _price, bool _tradeable) public {
         Call storage call = calls[_c];
-        require((msg.sender == call.long && msg.sender == call.short) || (msg.sender == call.long && call.open), "c: you cant change the price");
+        require((msg.sender == call.long && msg.sender == call.short && _tradeable) || (msg.sender == call.long && call.open), "c: you cant change the price");
         require(call.expiry > now, "c: already expired");
         require(!call.exercised, "c: already expired");
         call.price = _price; 
@@ -549,7 +540,7 @@ contract HedgeyCalls is ReentrancyGuard {
         require(newOwner != call.short);
         call.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            require(path.length > 2);
+            //require(path.length > 2);
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == asset && path[path.length - 1] == pymtCurrency);
             IHedgeySwap(newOwner).hedgeyCallSwap(msg.sender, _c, call.totalPurch, path, cashBack);
@@ -593,10 +584,10 @@ contract HedgeyCalls is ReentrancyGuard {
     event OpenOptionPurchased(uint _i);
     event OptionChanged(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
     event PriceSet(uint _i, uint _price, bool _tradeable);
-    event OptionExercised(uint _i, bool cashClosed);
+    event OptionExercised(uint _i, bool _cashClosed);
     event OptionReturned(uint _i);
     event OptionCancelled(uint _i);
-    event OptionTransferred(uint _i, address newOwner);
-    event PoolOptionBought(uint i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionTransferred(uint _i, address _newOwner);
+    event PoolOptionBought(uint _i, uint _j, uint _assetAmt, uint _strike, uint _price, uint _expiry);
     event AMMUpdate(bool _cashCloseOn);
 }

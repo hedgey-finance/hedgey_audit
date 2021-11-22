@@ -8,7 +8,6 @@ interface IHedgeySwap {
 }
 
 //contract assumes that neither asset nor payment currency is ETH / WETH
-
 contract HedgeyCeloCalls is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
@@ -35,9 +34,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         fee = _fee;
         assetDecimals = IERC20(_asset).decimals();
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
         }
         
@@ -343,21 +340,20 @@ contract HedgeyCeloCalls is ReentrancyGuard {
             call.tradeable = false;
             emit NewOptionBought(_c);
         } else {
-            uint proRataPurchase = _assetAmt.mul(10 ** assetDecimals).div(call.assetAmt);
             uint pricePerToken = call.price.mul(10 ** 32).div(call.assetAmt);
             uint proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
             require(_price == proRataPrice, "c: price doesnt match pro rata price");
             require(call.assetAmt.sub(_assetAmt) >= call.minimumPurchase, "c: remainder too small");
             uint balCheck = IERC20(pymtCurrency).balanceOf(msg.sender);
             require(balCheck >= proRataPrice, "c: not enough to sell this call option");
-            uint proRataTotalPurchase = call.totalPurch.mul(proRataPurchase).div(10 ** assetDecimals);
+            uint proRataTotalPurchase = _assetAmt.mul(_strike).div(10 ** assetDecimals);
             transferPymtWithFee(pymtCurrency, msg.sender, call.short, proRataPrice);
             calls[c++] = Call(call.short, _assetAmt, call.minimumPurchase, call.strike, proRataTotalPurchase, _price, _expiry, true, false, msg.sender, false);
-            emit PoolOptionBought(_c, c.sub(1), call.assetAmt.sub(_assetAmt), call.minimumPurchase, _strike, _price, _expiry);
+            emit PoolOptionBought(_c, c.sub(1), _assetAmt, _strike, _price, _expiry);
             //update the current call to become the remainder
             call.assetAmt -= _assetAmt;
             call.price -= _price;
-            call.totalPurch -= proRataTotalPurchase;
+            call.totalPurch = call.assetAmt.mul(_strike).div(10 ** assetDecimals);
             
         }
 
@@ -370,16 +366,16 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         Call storage ask = calls[_d];
         require(msg.sender == openShort.short, "c: your not the short");
         require(ask.short != address(0x0), "c: this is a newBid");
-        require(_price == ask.price, "c: price changed before executed");
+        require(_price == ask.price);
         require(ask.tradeable && !ask.exercised && ask.expiry > now,"c: ask issue");
         require(openShort.open && !openShort.exercised && openShort.expiry > now, "c: short issue");
-        require(openShort.strike == ask.strike, "c: strikes do not match");
-        require(openShort.assetAmt == ask.assetAmt, "c: asset amount does not match");
-        require(openShort.expiry == ask.expiry, "c: expiry does not match");
-        require(_c != _d, "c: wrong function to buyback");
+        require(openShort.strike == ask.strike, "c: strikes");
+        require(openShort.assetAmt == ask.assetAmt, "c: asset");
+        require(openShort.expiry == ask.expiry, "c: expiry");
+        require(_c != _d);
         //openShort pays the ask
         uint balCheck = IERC20(pymtCurrency).balanceOf(msg.sender);
-        require(balCheck >= ask.price, "c: not enough to buy this put");
+        require(balCheck >= ask.price);
         transferPymtWithFee(pymtCurrency, openShort.short, ask.long, _price); //if newAsk then ask.long == ask.short, if openAsk then ask.long is the one receiving the payment
         //all the checks having been matched - now we assign the openAsk short to the openShort short position
         //then we close out the openAsk position
@@ -405,7 +401,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     //this function lets the long set a new price on the call - typically used for existing open positions
     function setPrice(uint _c, uint _price, bool _tradeable) public {
         Call storage call = calls[_c];
-        require((msg.sender == call.long && msg.sender == call.short) || (msg.sender == call.long && call.open), "c: you cant change the price");
+        require((msg.sender == call.long && msg.sender == call.short && _tradeable) || (msg.sender == call.long && call.open), "c: you cant change the price");
         require(call.expiry > now, "c: already expired");
         require(!call.exercised, "c: already expired");
         call.price = _price; 
@@ -423,11 +419,11 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         require(call.strike == _strike && call.assetAmt == _assetAmt && call.price == _price && call.expiry == _expiry, "c: something changed");
         require(msg.sender != call.long, "c: You already own this");
         require(call.open, "c: This call isnt opened yet");
-        require(call.expiry >= now, "c: This call is already expired");
-        require(!call.exercised, "c: This has already been exercised");
-        require(call.tradeable, "c: not tradeable");
+        require(call.expiry >= now, "c:expired");
+        require(!call.exercised, "c: exercised");
+        require(call.tradeable, "c: !tradeable");
         uint balCheck = IERC20(pymtCurrency).balanceOf(msg.sender);
-        require(balCheck >= call.price, "c: not enough to sell this call option");
+        require(balCheck >= call.price);
         transferPymtWithFee(pymtCurrency, msg.sender, call.long, call.price);
         if (msg.sender == call.short) {
             call.exercised = true;
@@ -445,12 +441,12 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     function exercise(uint _c) public nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
-        require(call.open, "c: This isnt open");
-        require(call.expiry >= now, "c: This call is already expired");
-        require(!call.exercised, "c: This has already been exercised!");
-        require(msg.sender == call.long, "c: You dont own this call");
+        require(call.open);
+        require(call.expiry >= now, "c: expired");
+        require(!call.exercised, "c: exercised");
+        require(msg.sender == call.long);
         uint balCheck = IERC20(pymtCurrency).balanceOf(msg.sender);
-        require(balCheck >= call.totalPurch, "c: not enough to exercise this call option");
+        require(balCheck >= call.totalPurch);
         call.exercised = true;
         call.open = false;
         call.tradeable = false;
@@ -464,14 +460,14 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     //this is the exercise alternative for ppl who want to receive payment currency instead of the underlying asset
     function cashClose(uint _c, bool cashBack) public nonReentrant {
         calculateDifferences();
-        require(cashCloseOn, "c: this pair cannot be cash closed");
+        require(cashCloseOn);
         Call storage call = calls[_c];
-        require(call.open, "c: This isnt open");
-        require(call.expiry >= now, "c: This call is already expired");
-        require(!call.exercised, "c: This has already been exercised!");
-        require(msg.sender == call.long, "c: You dont own this call");
+        require(call.open);
+        require(call.expiry >= now, "c:expired");
+        require(!call.exercised, "c: exercised");
+        require(msg.sender == call.long);
         uint assetIn = estIn(call.totalPurch);
-        require(assetIn < call.assetAmt, "c: Underlying is not in the money");
+        require(assetIn < call.assetAmt, "c: not money");
         call.exercised = true;
         call.open = false;
         call.tradeable = false;
@@ -597,50 +593,10 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     event OpenOptionPurchased(uint _i);
     event OptionChanged(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
     event PriceSet(uint _i, uint _price, bool _tradeable);
-    event OptionExercised(uint _i, bool cashClosed);
-    //event OptionRolled(uint _i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionExercised(uint _i, bool _cashClosed);
     event OptionReturned(uint _i);
     event OptionCancelled(uint _i);
-    event OptionTransferred(uint _i, address newOwner);
-    event PoolOptionBought(uint i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionTransferred(uint _i, address _newOwner);
+    event PoolOptionBought(uint _i, uint _j, uint _assetAmt, uint _strike, uint _price, uint _expiry);
     event AMMUpdate(bool _cashCloseOn);
 }
-
-contract HedgeyCeloCallsFactory {
-    
-    mapping(address => mapping(address => address)) public pairs;
-    //address[] public totalContracts;
-    address public collector; 
-    uint public fee;
-    
-    
-
-    constructor (address payable _collector, uint _fee) public {
-        collector = _collector;
-        fee = _fee;
-       
-    }
-    
-    function changeFee(uint _newFee, address _collector) public {
-        require(msg.sender == collector, "youre not the collector");
-        fee = _newFee;
-        collector = _collector;
-    }
-
-    
-    function getPair(address asset, address pymtCurrency) public view returns (address pair) {
-        pair = pairs[asset][pymtCurrency];
-    }
-
-    function createContract(address asset, address pymtCurrency) public {
-        //require(asset != pymtCurrency, "same currencies");
-        require(pairs[asset][pymtCurrency] == address(0), "contract exists");
-        HedgeyCeloCalls callContract = new HedgeyCeloCalls(asset, pymtCurrency, collector, fee);
-        pairs[asset][pymtCurrency] = address(callContract);
-        //totalContracts.push(address(callContract));
-        emit NewPairCreated(asset, pymtCurrency, address(callContract));
-    }
-
-    event NewPairCreated(address _asset, address _pymtCurrency, address _pair);
-}
-

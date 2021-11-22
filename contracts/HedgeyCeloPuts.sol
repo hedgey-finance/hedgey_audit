@@ -7,6 +7,7 @@ interface IHedgeySwap {
     function hedgeyPutSwap(address originalOwner, uint _c, uint _totalPurchase, address[] memory path) external;
 }
 
+
 //Celo network does not required msg.value, everything acts like a ERC20 token
 contract HedgeyCeloPuts is ReentrancyGuard {
     using SafeMath for uint;
@@ -33,9 +34,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
         fee = _fee;
         assetDecimals = IERC20(_asset).decimals();
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
         }
         
@@ -337,21 +336,20 @@ contract HedgeyCeloPuts is ReentrancyGuard {
             put.tradeable = false; 
             emit NewOptionBought(_p);
         } else {
-            uint proRataPurchase = _assetAmt.mul(10 ** assetDecimals).div(put.assetAmt);
             uint pricePerToken = put.price.mul(10 ** 32).div(put.assetAmt);
             uint proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
             require(_price == proRataPrice, "p: price doesnt match pro rata price");
             require(put.assetAmt.sub(_assetAmt) >= put.minimumPurchase, "p: remainder too small");
             uint balCheck = IERC20(pymtCurrency).balanceOf(msg.sender);
             require(balCheck >= proRataPrice, "p: not enough to buy this put");
-            uint proRataTotalPurchase = put.totalPurch.mul(proRataPurchase).div(10 ** assetDecimals);
+            uint proRataTotalPurchase = _assetAmt.mul(_strike).div(10 ** assetDecimals);
             transferPymtWithFee(pymtCurrency, msg.sender, put.short, proRataPrice);
             puts[p++] = Put(put.short, _assetAmt, put.minimumPurchase, put.strike, proRataTotalPurchase, _price, _expiry, true, false, msg.sender, false);
-            emit PoolOptionBought(_p, p.sub(1), put.assetAmt.sub(_assetAmt), put.minimumPurchase, _strike, _price, _expiry);
+            emit PoolOptionBought(_p, p.sub(1), _assetAmt, _strike, _price, _expiry);
             //update the current call to become the remainder
             put.assetAmt -= _assetAmt;
             put.price -= _price;
-            put.totalPurch -= proRataTotalPurchase;
+            put.totalPurch = put.assetAmt.mul(_strike).div(10 ** assetDecimals);
         }
     }    
 
@@ -397,7 +395,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     
     function setPrice(uint _p, uint _price, bool _tradeable) public {
         Put storage put = puts[_p];
-        require((msg.sender == put.long && msg.sender == put.short) || (msg.sender == put.long && put.open), "p: you cant change the price");
+        require((msg.sender == put.long && msg.sender == put.short && _tradeable) || (msg.sender == put.long && put.open), "p: you cant change the price");
         require(put.expiry > now, "p: already expired");
         require(!put.exercised, "p: already exercised");
         put.price = _price;
@@ -541,8 +539,8 @@ contract HedgeyCeloPuts is ReentrancyGuard {
         require(newOwner != put.short, "p: you cannot transfer to the short");
         put.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            require(Address.isContract(newOwner));
-            require(path.length > 2, "use the normal cash close method for single pool swaps");
+            //require(Address.isContract(newOwner));
+            //require(path.length > 2, "use the normal cash close method for single pool swaps");
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == pymtCurrency && path[path.length - 1] == asset, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyPutSwap(msg.sender, _p, put.assetAmt, path);
@@ -582,51 +580,11 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     event OpenOptionPurchased(uint _i);
     event OptionChanged(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
     event PriceSet(uint _i, uint _price, bool _tradeable);
-    event OptionExercised(uint _i, bool cashClosed);
-    //event OptionRolled(uint _i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionExercised(uint _i, bool _cashClosed);
     event OptionReturned(uint _i);
     event OptionCancelled(uint _i);
-    event OptionTransferred(uint _i, address newOwner);
-    event PoolOptionBought(uint i, uint _j, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event OptionTransferred(uint _i, address _newOwner);
+    event PoolOptionBought(uint _i, uint _j, uint _assetAmt, uint _strike, uint _price, uint _expiry);
     event AMMUpdate(bool _cashCloseOn);
     
-}
-
-
-
-
-contract HedgeyCeloPutsFactory {
-    
-    mapping(address => mapping(address => address)) public pairs;
-    //address[] public totalContracts;
-    address public collector;
-    uint public fee;
-
-    constructor (address payable _collector, uint _fee) public {
-        collector = _collector;
-        fee = _fee;
-    }
-    
-    function changeFee(uint _newFee, address _collector) public {
-        require(msg.sender == collector, "only the collector");
-        fee = _newFee;
-        collector = _collector;
-    }
-
-    
-    function getPair(address asset, address pymtCurrency) public view returns (address pair) {
-        pair = pairs[asset][pymtCurrency];
-    }
-    
-
-    function createContract(address asset, address pymtCurrency) public {
-        require(asset != pymtCurrency, "same currencies");
-        require(pairs[asset][pymtCurrency] == address(0), "contract exists");
-        HedgeyCeloPuts putContract = new HedgeyCeloPuts(asset, pymtCurrency, collector, fee);
-        pairs[asset][pymtCurrency] = address(putContract);
-        //totalContracts.push(address(putContract));
-        emit NewPairCreated(asset, pymtCurrency, address(putContract));
-    }
-
-    event NewPairCreated(address _asset, address _pymtCurrency, address _pair);
 }

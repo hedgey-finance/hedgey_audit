@@ -216,7 +216,7 @@ contract HedgeyPuts is ReentrancyGuard {
         uint balCheck = pymtWeth ? msg.value : IERC20(pymtCurrency).balanceOf(msg.sender);
         require(balCheck >= shortPymt, "p: sell new option: insufficent collateral");
         depositPymt(pymtWeth, pymtCurrency, msg.sender, shortPymt);
-        SafeERC20.safeTransfer(IERC20(pymtCurrency), feeCollector, feePymt);
+        if (feePymt > 0) SafeERC20.safeTransfer(IERC20(pymtCurrency), feeCollector, feePymt);
         put.open = true;
         put.short = msg.sender;
         put.tradeable = false;

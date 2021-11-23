@@ -22,6 +22,7 @@
     }
     
     
+    
     contract HedgeyAnySwap is ReentrancyGuard {
         using SafeMath for uint;
         using SafeERC20 for IERC20;
@@ -31,8 +32,9 @@
         address payable public weth;
         uint8 public fee;
     
-        constructor(address _factory, uint8 _fee) public {
+        constructor(address _factory, uint8 _fee, address payable _weth) public {
             factory = _factory;
+            weth = _weth;
             fee = _fee;
         }
     
@@ -153,12 +155,12 @@
             uint purchase = amount0 == 0 ? amount1 : amount0;
             if (optionType) {
                 (address asset) = exerciseCall(_hedgey, _n, purchase); //exercises the call given the input data
-                require(IERC20(asset).balanceOf(address(this)) > amountDue, "there is not enough asset to convert");
+                //require(IERC20(asset).balanceOf(address(this)) > amountDue, "there is not enough asset to convert");
                 multiSwap(path, amountDue, 0, msg.sender);
             } else {
                 // must be a put
                 (address paymentCurrency) = exercisePut(_hedgey, _n, purchase);
-                require(IERC20(paymentCurrency).balanceOf(address(this)) > amountDue, "not enough cash to payback the short");
+                //require(IERC20(paymentCurrency).balanceOf(address(this)) > amountDue, "not enough cash to payback the short");
                 multiSwap(path, amountDue, 0, msg.sender);
             }
             
@@ -172,11 +174,13 @@
             if(IHedgey(hedgeyCalls).pymtCurrency() == weth) {
                 //this value needs to be eth, so we have to take the borrowed WETH and flip to ETH to deliver 
                 IWETH(weth).withdraw(purchase);
+                IHedgey(hedgeyCalls).exercise{value: purchase}(_c); //exercise call - gives us back the asset
             } else {
                 SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyCalls).pymtCurrency()), hedgeyCalls, purchase);
+                IHedgey(hedgeyCalls).exercise(_c);
             }
              //approve that we can spend the payment currency
-            IHedgey(hedgeyCalls).exercise{value: purchase}(_c); //exercise call - gives us back the asset
+            
             asset = IHedgey(hedgeyCalls).asset();
         }
         
@@ -185,10 +189,12 @@
             if(IHedgey(hedgeyPuts).asset() == weth) {
                 //this value needs to be eth, so we have to take the borrowed WETH and flip to ETH to deliver 
                 IWETH(weth).withdraw(sale);
+                IHedgey(hedgeyPuts).exercise{value: sale}(_p);
             } else {
                 SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyPuts).asset()), hedgeyPuts, sale); //approve that we can spend the payment currency
+                IHedgey(hedgeyPuts).exercise(_p);
             }
-            IHedgey(hedgeyPuts).exercise{value: sale}(_p);
+            
             paymentCurrency = IHedgey(hedgeyPuts).pymtCurrency();
             
         }

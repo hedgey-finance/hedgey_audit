@@ -550,7 +550,7 @@ contract HedgeyPuts is ReentrancyGuard {
     function estIn(uint amountOut) public view returns (uint amountIn) {
         (uint resA, uint resB,) = IUniswapV2Pair(uniPair).getReserves();
         address token1 = IUniswapV2Pair(uniPair).token1();
-        amountIn = (token1 == pymtCurrency) ? UniswapV2Library.getAmountIn(amountOut, resA, resB) : UniswapV2Library.getAmountIn(amountOut, resB, resA);
+        amountIn = (token1 == asset) ? UniswapV2Library.getAmountIn(amountOut, resA, resB) : UniswapV2Library.getAmountIn(amountOut, resB, resA);
     }
 
 

@@ -139,12 +139,10 @@ contract HedgeyAnySwap is ReentrancyGuard {
         uint purchase = amount0 == 0 ? amount1 : amount0;
         if (optionType) {
             (address asset) = exerciseCall(_hedgey, _n, purchase); //exercises the call given the input data
-            require(IERC20(asset).balanceOf(address(this)) > amountDue, "there is not enough asset to convert");
             multiSwap(path, amountDue, 0, msg.sender);
         } else {
             // must be a put
             (address paymentCurrency) = exercisePut(_hedgey, _n, purchase);
-            require(IERC20(paymentCurrency).balanceOf(address(this)) > amountDue, "not enough cash to payback the short");
             multiSwap(path, amountDue, 0, msg.sender);
         }
         

@@ -506,7 +506,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     
     
     
-    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable public {
+    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) public {
         calculateDifferences();
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {

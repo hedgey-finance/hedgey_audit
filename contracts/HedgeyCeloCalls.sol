@@ -1,6 +1,6 @@
 pragma solidity ^0.6.12;
 
-import ./libraries.sol
+import "./libraries.sol"
 
 
 interface IHedgeySwap {
@@ -550,7 +550,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         call.long = newOwner; //set long to new owner
         if (path.length > 0) {
             //require(Address.isContract(newOwner));
-            //require(path.length > 2, "use the normal cash close method for single pool swaps");
+            require(path.length > 1, "use the normal cash close method for single pool swaps");
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == asset && path[path.length - 1] == pymtCurrency, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyCallSwap(msg.sender, _c, call.totalPurch, path, cashBack);

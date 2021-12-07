@@ -1,6 +1,6 @@
 pragma solidity ^0.6.12;
 
-import ./libraries.sol
+import "./libraries.sol"
 
 
 interface IWETH {
@@ -25,11 +25,11 @@ contract HedgeyCalls is ReentrancyGuard {
     address public pymtCurrency;
     uint public assetDecimals;
     address public uniPair; 
-    address payable public weth = 0xc778417E063141139Fce010982780140Aa0cD5Ab; //weth address    
+    address payable public constant weth = 0xc778417E063141139Fce010982780140Aa0cD5Ab; //weth address    
     uint public fee;
     address payable public feeCollector;
     uint public c = 0;
-    address public uniFactory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; //AMM factory address
+    address public constant uniFactory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; //AMM factory address
     bool private assetWeth;
     bool private pymtWeth;
     bool public cashCloseOn;

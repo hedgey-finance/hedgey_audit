@@ -1,7 +1,7 @@
     pragma solidity ^0.6.12;
     
     
-    import ./libraries.sol
+    import "./libraries.sol"
     
     interface IWETH {
         function deposit() external payable;
@@ -46,7 +46,7 @@
     
     
     
-        function sortTokens(address tokenA, address tokenB) internal view returns (address token0, address token1) {
+        function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
             require(tokenA != tokenB, 'UniswapV2Library: IDENTICAL_ADDRESSES');
             (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
             require(token0 != address(0), 'UniswapV2Library: ZERO_ADDRESS');
@@ -212,13 +212,15 @@
             flashSwap(path[path.length - 2], path[path.length - 1], totalPurchase, data);
             //then we send the profits to the original owner
             if(cashBack) {
+                uint preWethBalance = IERC20(weth).balanceOf(address(this));
                 //swap again converting remaining asset into cash and delivering that out
                 if(IHedgey(msg.sender).pymtCurrency() == weth) {
                     multiSwap(path, 0, IERC20(path[0]).balanceOf(address(this)), address(this)); //swap asset to WETH
                     //transfer out WETH as ETH to original owner
-                    uint wethBalance = IERC20(weth).balanceOf(address(this));
-                    IWETH(weth).withdraw(wethBalance);
-                    originalOwner.transfer(wethBalance);
+                    uint postWethBalance = IERC20(weth).balanceOf(address(this));
+                    uint deltaWeth = postWethBalance.sub(preWethBalance);
+                    IWETH(weth).withdraw(deltaWeth);
+                    originalOwner.transfer(deltaWeth);
                 } else {
                     multiSwap(path, 0, IERC20(path[0]).balanceOf(address(this)), originalOwner);
                 }

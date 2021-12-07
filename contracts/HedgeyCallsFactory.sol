@@ -1,6 +1,6 @@
 pragma solidity ^0.6.12;
 
-/import ./HedgeyCalls.sol
+import "./HedgeyCalls.sol"
 
 
 contract HedgeyCallsFactory {
@@ -18,19 +18,19 @@ contract HedgeyCallsFactory {
     }
     
     
-    function changeFee(uint _newFee, address payable _collector) public {
+    function changeFee(uint _newFee, address payable _collector) external {
         require(msg.sender == collector, "youre not the collector");
         fee = _newFee;
         collector = _collector;
     }
     
     
-    function getPair(address asset, address pymtCurrency) public view returns (address pair) {
+    function getPair(address asset, address pymtCurrency) external view returns (address pair) {
         pair = pairs[asset][pymtCurrency];
     }
    
     
-    function createContract(address asset, address pymtCurrency) public {
+    function createContract(address asset, address pymtCurrency) external {
         require(asset != pymtCurrency, "same currencies");
         require(pairs[asset][pymtCurrency] == address(0), "contract exists");
         HedgeyCalls callContract = new HedgeyCalls(asset, pymtCurrency, collector, fee);

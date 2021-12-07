@@ -136,7 +136,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
     
     //function anyone can call after the contract is set to update if there was no AMM before but now there is
-    function updateAMM() public {
+    function updateAMM() external {
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
         if (uniPair == address(0x0)) {
             cashCloseOn = false;
@@ -151,7 +151,7 @@ contract HedgeyCalls is ReentrancyGuard {
     //CALL FUNCTIONS GOING HERE**********************************************************
 
     //function for someone wanting to buy a new call
-    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public {
+    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external {
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "c: totalPurchase error: too small amount");
         uint balCheck = pymtWeth ? msg.value : IERC20(pymtCurrency).balanceOf(msg.sender);
@@ -162,7 +162,7 @@ contract HedgeyCalls is ReentrancyGuard {
     }
     
     //function to cancel a new bid
-    function cancelNewBid(uint _c) public nonReentrant {
+    function cancelNewBid(uint _c) external nonReentrant {
         Call storage call = calls[_c];
         require(msg.sender == call.long, "c: only long can cancel a bid");
         require(!call.open, "c: call already open");
@@ -175,7 +175,7 @@ contract HedgeyCalls is ReentrancyGuard {
     }
 
     
-    function sellOpenOptionToNewBid(uint _c, uint _d, uint _price) payable public nonReentrant {
+    function sellOpenOptionToNewBid(uint _c, uint _d, uint _price) payable external nonReentrant {
         Call storage openCall = calls[_c];
         Call storage newBid = calls[_d];
         require(_c != _d, "c: wrong sale function");
@@ -200,7 +200,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
     //function for someone to write the call for the open bid
     //, uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function sellNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public nonReentrant {
+    function sellNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Call storage call = calls[_c];
         require(call.strike == _strike && call.assetAmt == _assetAmt && call.price == _price && call.expiry == _expiry, "c details issue");
         require(call.short == address(0x0));
@@ -223,7 +223,7 @@ contract HedgeyCalls is ReentrancyGuard {
     }
 
     
-    function changeNewOption(uint _c, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable public nonReentrant {
+    function changeNewOption(uint _c, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Call storage call = calls[_c];
         require(call.long == msg.sender, "c: dont own");
         require(!call.exercised, "c: exercised");
@@ -281,7 +281,7 @@ contract HedgeyCalls is ReentrancyGuard {
     
 
     //function to write a new call
-    function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable public {
+    function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable external {
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "c: totalPurchase error: too small amount");
         require(_minimumPurchase.mul(_strike).div(10 ** assetDecimals) > 0, "c: minimum purchase error, too small of a min");
@@ -295,7 +295,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
 
     //function to cancel a new ask from writter side
-    function cancelNewAsk(uint _c) public nonReentrant {
+    function cancelNewAsk(uint _c) external nonReentrant {
         Call storage call = calls[_c];
         require(msg.sender == call.short && msg.sender == call.long, "c: only short can change an ask");
         require(!call.open, "c: call already open");
@@ -308,7 +308,7 @@ contract HedgeyCalls is ReentrancyGuard {
     
     //function to purchase a new call that hasn't changed hands yet
     //, uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function buyNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public {
+    function buyNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external {
         Call storage call = calls[_c];
         require(call.strike == _strike && call.expiry == _expiry, "c details issue: something changed");
         require(msg.sender != call.short, "c: you cannot buy this");
@@ -351,7 +351,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
     
     /**function to buy an openAsk or newAsk and then replace the long from one position with the long of the other position and remove openShort from obligation */
-    function buyOptionFromAsk(uint _c, uint _d, uint _price) payable public nonReentrant {
+    function buyOptionFromAsk(uint _c, uint _d, uint _price) payable external nonReentrant {
         Call storage openShort = calls[_c];
         Call storage ask = calls[_d];
         require(msg.sender == openShort.short, "c: your not the short");
@@ -381,7 +381,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
 
     //this function lets the long set a new price on the call - typically used for existing open positions
-    function setPrice(uint _c, uint _price, bool _tradeable) public {
+    function setPrice(uint _c, uint _price, bool _tradeable) external {
         Call storage call = calls[_c];
         require((msg.sender == call.long && msg.sender == call.short && _tradeable) || (msg.sender == call.long && call.open), "c: you cant change the price");
         require(call.expiry > now, "c: already expired");
@@ -395,7 +395,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
     //use this function to sell existing calls
     //uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function buyOpenOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public nonReentrant {
+    function buyOpenOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Call storage call = calls[_c];
         require(call.strike == _strike && call.assetAmt == _assetAmt && call.price == _price && call.expiry == _expiry);
         require(msg.sender != call.long);
@@ -418,7 +418,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
 
     //this is the basic exercise execution function that needs to be invoked prior to maturity to receive the physical asset
-    function exercise(uint _c) payable public nonReentrant {
+    function exercise(uint _c) payable external nonReentrant {
         Call storage call = calls[_c];
         require(call.open);
         require(call.expiry >= now);
@@ -439,7 +439,7 @@ contract HedgeyCalls is ReentrancyGuard {
 
 
     //this is the exercise alternative for ppl who want to receive payment currency instead of the underlying asset
-    function cashClose(uint _c, bool cashBack) payable public nonReentrant {
+    function cashClose(uint _c, bool cashBack) payable external nonReentrant {
         require(cashCloseOn);
         Call storage call = calls[_c];
         require(call.open);
@@ -480,7 +480,7 @@ contract HedgeyCalls is ReentrancyGuard {
     
 
     //returns an expired call back to the short
-    function returnExpired(uint[] memory _calls) public nonReentrant {
+    function returnExpired(uint[] memory _calls) external nonReentrant {
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {
             Call storage call = calls[_calls[i]];
@@ -497,7 +497,7 @@ contract HedgeyCalls is ReentrancyGuard {
     
     
     
-    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable public {
+    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable external {
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {
             Call storage call = calls[_calls[i]];

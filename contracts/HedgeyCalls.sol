@@ -540,7 +540,7 @@ contract HedgeyCalls is ReentrancyGuard {
         require(newOwner != call.short);
         call.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            //require(path.length > 2);
+            require(path.length > 1);
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == asset && path[path.length - 1] == pymtCurrency);
             IHedgeySwap(newOwner).hedgeyCallSwap(msg.sender, _c, call.totalPurch, path, cashBack);

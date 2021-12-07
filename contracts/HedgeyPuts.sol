@@ -522,7 +522,7 @@ contract HedgeyPuts is ReentrancyGuard {
         require(newOwner != put.short, "p: you cannot transfer to the short");
         put.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            //require(path.length > 2, "use the normal cash close method for single pool swaps");
+            require(path.length > 1, "use the normal cash close method for single pool swaps");
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == pymtCurrency && path[path.length - 1] == asset, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyPutSwap(msg.sender, _p, put.assetAmt, path);

@@ -19,7 +19,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     uint public fee;
     address public feeCollector;
     uint public c = 0;
-    address public uniFactory = 0x62d5b84bE28a183aBB507E125B384122D2C25fAE; //ubeswap factory
+    address public constant uniFactory = 0x62d5b84bE28a183aBB507E125B384122D2C25fAE; //ubeswap factory
     bool public cashCloseOn;
     uint public lastAssetBalance;
     uint public assetDifference;
@@ -107,13 +107,13 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     //admin function to update the fee amount
-    function changeFee(uint _newFee, address _collector) public {
+    function changeFee(uint _newFee, address _collector) external {
         require(msg.sender == feeCollector, "youre not the collector");
         fee = _newFee;
         feeCollector = _collector;
     }
 
-    function updateAMM() public {
+    function updateAMM() external {
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
         if (uniPair == address(0x0)) {
             cashCloseOn = false;
@@ -139,7 +139,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     //CALL FUNCTIONS GOING HERE**********************************************************
 
     //function for someone wanting to buy a new call
-    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) public {
+    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         calculateDifferences();
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "c: totalPurch error: too small amount");
@@ -152,7 +152,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
     
     //function to cancel a new bid
-    function cancelNewBid(uint _c) public nonReentrant {
+    function cancelNewBid(uint _c) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(msg.sender == call.long, "c: only long can cancel a bid");
@@ -167,7 +167,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
 
     
-    function sellOpenOptionToNewBid(uint _c, uint _d, uint _price) public nonReentrant {
+    function sellOpenOptionToNewBid(uint _c, uint _d, uint _price) external nonReentrant {
         calculateDifferences();
         Call storage openCall = calls[_c];
         Call storage newBid = calls[_d];
@@ -204,7 +204,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
     //function for someone to write the call for the open bid
     //, uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function sellNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) public nonReentrant {
+    function sellNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(call.strike == _strike && call.assetAmt == _assetAmt && call.price == _price && call.expiry == _expiry, "c details issue: something changed");
@@ -231,7 +231,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
 
 
-    function changeNewOption(uint _c, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) public nonReentrant {
+    function changeNewOption(uint _c, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(call.long == msg.sender, "c: you do not own this call");
@@ -289,7 +289,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
 
     //function to write a new call
-    function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) public {
+    function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) external {
         calculateDifferences();
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "c: totalPurchase error: too small amount");
@@ -305,7 +305,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     //function to cancel a new ask from writter side
-    function cancelNewAsk(uint _c) public nonReentrant {
+    function cancelNewAsk(uint _c) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(msg.sender == call.short && msg.sender == call.long, "c: only short can change an ask");
@@ -320,7 +320,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     
     //function to purchase a new call that hasn't changed hands yet
     //, uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function buyNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) public {
+    function buyNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         Call storage call = calls[_c];
         require(call.strike == _strike && _assetAmt > 0 && call.price == _price && call.expiry == _expiry, "c details issue: something changed");
         require(msg.sender != call.short, "c: you cannot buy this");
@@ -360,7 +360,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
     
     
-    function buyOptionFromAsk(uint _c, uint _d, uint _price) public nonReentrant {
+    function buyOptionFromAsk(uint _c, uint _d, uint _price) external nonReentrant {
         calculateDifferences();
         Call storage openShort = calls[_c];
         Call storage ask = calls[_d];
@@ -399,7 +399,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     //this function lets the long set a new price on the call - typically used for existing open positions
-    function setPrice(uint _c, uint _price, bool _tradeable) public {
+    function setPrice(uint _c, uint _price, bool _tradeable) external {
         Call storage call = calls[_c];
         require((msg.sender == call.long && msg.sender == call.short && _tradeable) || (msg.sender == call.long && call.open), "c: you cant change the price");
         require(call.expiry > now, "c: already expired");
@@ -413,7 +413,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
     //use this function to sell existing calls
     //uint _strike, uint _assetAmt, uint _price, uint _expiry
-    function buyOpenOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) public nonReentrant {
+    function buyOpenOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(call.strike == _strike && call.assetAmt == _assetAmt && call.price == _price && call.expiry == _expiry, "c: something changed");
@@ -438,7 +438,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     //this is the basic exercise execution function that needs to be invoked prior to maturity to receive the physical asset
-    function exercise(uint _c) public nonReentrant {
+    function exercise(uint _c) external nonReentrant {
         calculateDifferences();
         Call storage call = calls[_c];
         require(call.open);
@@ -458,7 +458,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     //this is the exercise alternative for ppl who want to receive payment currency instead of the underlying asset
-    function cashClose(uint _c, bool cashBack) public nonReentrant {
+    function cashClose(uint _c, bool cashBack) external nonReentrant {
         calculateDifferences();
         require(cashCloseOn);
         Call storage call = calls[_c];
@@ -488,7 +488,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     
 
     //returns an expired call back to the short
-    function returnExpired(uint[] memory _calls) public nonReentrant {
+    function returnExpired(uint[] memory _calls) external nonReentrant {
         calculateDifferences();
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {
@@ -506,7 +506,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     
     
     
-    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) public {
+    function rollExpired(uint[] memory _calls, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) external {
         calculateDifferences();
         uint _totalAssetAmount;
         for (uint i; i < _calls.length; i++) {

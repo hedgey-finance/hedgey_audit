@@ -2,7 +2,7 @@
 pragma solidity ^0.6.12;
 
 
-import ./libraries.sol
+import "./libraries.sol"
 
 
 interface IWETH {
@@ -27,11 +27,11 @@ contract HedgeyPuts is ReentrancyGuard {
     address public pymtCurrency; 
     uint public assetDecimals;
     address public uniPair;
-    address payable public weth = 0xc778417E063141139Fce010982780140Aa0cD5Ab; //rinkeby weth      
+    address payable public constant weth = 0xc778417E063141139Fce010982780140Aa0cD5Ab; //rinkeby weth      
     uint public fee;
     address payable public feeCollector;
     uint public p = 0; 
-    address public uniFactory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; //uniswap 
+    address public constant uniFactory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f; //uniswap 
     bool private assetWeth;
     bool private pymtWeth;
     bool public cashCloseOn;
@@ -138,11 +138,9 @@ contract HedgeyPuts is ReentrancyGuard {
 
     
 
-    function updateAMM() public {
+    function updateAMM() external {
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
         }
         emit AMMUpdate(cashCloseOn);
@@ -152,7 +150,7 @@ contract HedgeyPuts is ReentrancyGuard {
     // PUT FUNCTIONS  **********************************************
 
     //function for someone wanting to buy a new put
-    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public {
+    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external {
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "p: totalPurchase error: too small amount");
         uint balCheck = pymtWeth ? msg.value : IERC20(pymtCurrency).balanceOf(msg.sender);
@@ -163,7 +161,7 @@ contract HedgeyPuts is ReentrancyGuard {
     }
 
 
-    function cancelNewBid(uint _p) public nonReentrant {
+    function cancelNewBid(uint _p) external nonReentrant {
         Put storage put = puts[_p];
         require(msg.sender == put.long, "p:only long can cancel a bid");
         require(!put.open, "p: put already open");
@@ -176,7 +174,7 @@ contract HedgeyPuts is ReentrancyGuard {
     }
 
     //function for an existing long to sell position to a new bidder
-    function sellOpenOptionToNewBid(uint _p, uint _q, uint _price) payable public nonReentrant {
+    function sellOpenOptionToNewBid(uint _p, uint _q, uint _price) payable external nonReentrant {
         Put storage openPut = puts[_p];
         Put storage newBid = puts[_q];
         require(_p != _q, "p: wrong sale function");
@@ -202,7 +200,7 @@ contract HedgeyPuts is ReentrancyGuard {
     }
 
     //function for someone to write the put for the open bid
-    function sellNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public {
+    function sellNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Put storage put = puts[_p];
         require(put.strike == _strike && put.assetAmt == _assetAmt && put.price == _price && put.expiry == _expiry, "p details mismatch: something has changed before execution");
         require(put.short == address(0x0));
@@ -224,7 +222,7 @@ contract HedgeyPuts is ReentrancyGuard {
     }
 
 
-    function changeNewOption(uint _p, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable public nonReentrant {
+    function changeNewOption(uint _p, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Put storage put = puts[_p];
         require(put.long == msg.sender, "p: you do not own this put");
         require(!put.exercised, "p: this has been exercised");
@@ -284,7 +282,7 @@ contract HedgeyPuts is ReentrancyGuard {
 
 
     //function for submitting a new ask
-     function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable public {
+     function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) payable external {
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "p totalPurchase error: too small amount");
         require(_minimumPurchase.mul(_strike).div(10 ** assetDecimals) > 0, "p: minimum purchase error, too small of a min");
@@ -298,7 +296,7 @@ contract HedgeyPuts is ReentrancyGuard {
     
     
     //function to cancel a new ask from writter side
-    function cancelNewAsk(uint _p) public nonReentrant {
+    function cancelNewAsk(uint _p) external nonReentrant {
         Put storage put = puts[_p];
         require(msg.sender == put.short && msg.sender == put.long, "p: only short can change an ask");
         require(!put.open, "p: put already open");
@@ -311,7 +309,7 @@ contract HedgeyPuts is ReentrancyGuard {
 
 
     //function to purchase the first newly written put
-    function buyNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public {
+    function buyNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external {
         Put storage put = puts[_p];
         require(put.strike == _strike && put.expiry == _expiry, "p details mismatch: something has changed before execution");
         require(put.expiry > now, "p: This put is already expired");
@@ -352,7 +350,7 @@ contract HedgeyPuts is ReentrancyGuard {
 
     
 
-    function buyOptionFromAsk(uint _p, uint _q, uint _price) payable public nonReentrant {
+    function buyOptionFromAsk(uint _p, uint _q, uint _price) payable external nonReentrant {
         Put storage openShort = puts[_p];
         Put storage ask = puts[_q];
         require(_p != _q);
@@ -383,7 +381,7 @@ contract HedgeyPuts is ReentrancyGuard {
 
 
     //function to set a price of a put as the long, or to turn the open order off
-    function setPrice(uint _p, uint _price, bool _tradeable) public {
+    function setPrice(uint _p, uint _price, bool _tradeable) external {
         Put storage put = puts[_p];
         require((msg.sender == put.long && msg.sender == put.short && _tradeable) || (msg.sender == put.long && put.open), "p: you cant change the price");
         require(put.expiry > now);
@@ -395,7 +393,7 @@ contract HedgeyPuts is ReentrancyGuard {
 
     
     //function for someone to purchase an open option
-    function buyOpenOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable public nonReentrant {
+    function buyOpenOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) payable external nonReentrant {
         Put storage put = puts[_p];
         require(put.strike == _strike && put.assetAmt == _assetAmt && put.price == _price && put.expiry == _expiry);
         require(msg.sender != put.long); 
@@ -418,7 +416,7 @@ contract HedgeyPuts is ReentrancyGuard {
     }
 
     //function to physiputy exercise
-    function exercise(uint _p) payable public nonReentrant {
+    function exercise(uint _p) payable external nonReentrant {
         Put storage put = puts[_p];
         require(put.open);
         require(put.expiry >= now, "p: This put is already expired");
@@ -437,8 +435,8 @@ contract HedgeyPuts is ReentrancyGuard {
         emit OptionExercised(_p, false);
     }
 
-    //function to cash close with the uniswap flash swaps tool - bool is a dummy to match puts
-    function cashClose(uint _p) payable public nonReentrant {
+    //function to cash close with the uniswap flash swaps tool
+    function cashClose(uint _p) payable external nonReentrant {
         require(cashCloseOn);
         Put storage put = puts[_p];
         require(put.open);
@@ -463,7 +461,7 @@ contract HedgeyPuts is ReentrancyGuard {
     
 
 
-    function returnExpired(uint[] memory _puts) public nonReentrant {
+    function returnExpired(uint[] memory _puts) external nonReentrant {
         uint _totalPurchaseLocked;
         for (uint i; i < _puts.length; i++) {
             Put storage put = puts[_puts[i]];
@@ -478,7 +476,7 @@ contract HedgeyPuts is ReentrancyGuard {
         
     }
     
-    function rollExpired(uint[] memory _puts, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable public {
+    function rollExpired(uint[] memory _puts, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable external {
         uint _totalAssetAmount;
         uint _totalPurchaseLocked;
         for (uint i; i < _puts.length; i++) {

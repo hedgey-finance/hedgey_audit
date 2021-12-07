@@ -1,6 +1,6 @@
 pragma solidity ^0.6.12;
 
-import ./libraries.sol
+import "./libraries.sol"
 
 
 interface IHedgeySwap {
@@ -20,7 +20,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     uint public fee;
     address public feeCollector;
     uint public p = 0;
-    address public uniFactory = 0x62d5b84bE28a183aBB507E125B384122D2C25fAE; //uniswap factory
+    address public constant uniFactory = 0x62d5b84bE28a183aBB507E125B384122D2C25fAE; //uniswap factory
     bool public cashCloseOn;
     uint public lastPaymentBalance;
     uint public paymentDifference;
@@ -109,11 +109,9 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
     
-    function updateAMM() public {
+    function updateAMM() external {
         uniPair = IUniswapV2Factory(uniFactory).getPair(asset, pymtCurrency);
-        if (uniPair == address(0x0)) {
-            cashCloseOn = false;
-        } else {
+        if (uniPair != address(0x0)) {
             cashCloseOn = true;
         }
         emit AMMUpdate(cashCloseOn);
@@ -135,7 +133,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     // PUT FUNCTIONS  **********************************************
 
     
-    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) public {
+    function newBid(uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         calculateDifferences();
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "p: totalPurchase error: too small amount");
@@ -148,7 +146,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
 
-    function cancelNewBid(uint _p) public nonReentrant {
+    function cancelNewBid(uint _p) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(msg.sender == put.long, "p:only long can cancel a bid");
@@ -163,7 +161,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
     
-    function sellOpenOptionToNewBid(uint _p, uint _q, uint _price) public nonReentrant {
+    function sellOpenOptionToNewBid(uint _p, uint _q, uint _price) external nonReentrant {
         calculateDifferences();
         Put storage openPut = puts[_p];
         Put storage newBid = puts[_q];
@@ -199,7 +197,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
     
-    function sellNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) public {
+    function sellNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(put.strike == _strike && put.assetAmt == _assetAmt && put.price == _price && put.expiry == _expiry, "p details mismatch: something has changed before execution");
@@ -223,7 +221,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
 
-    function changeNewOption(uint _p, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) public nonReentrant {
+    function changeNewOption(uint _p, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(put.long == msg.sender, "p: you do not own this put");
@@ -285,7 +283,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
 
 
     
-     function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) public {
+     function newAsk(uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry) external {
         calculateDifferences();
         uint _totalPurch = _assetAmt.mul(_strike).div(10 ** assetDecimals);
         require(_totalPurch > 0, "p totalPurchase error: too small amount");
@@ -301,7 +299,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     
     
     
-    function cancelNewAsk(uint _p) public nonReentrant {
+    function cancelNewAsk(uint _p) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(msg.sender == put.short && msg.sender == put.long, "p: only short can change an ask");
@@ -316,7 +314,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
 
 
     
-    function buyNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) public {
+    function buyNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         Put storage put = puts[_p];
         require(put.strike == _strike && _assetAmt > 0 && put.price == _price && put.expiry == _expiry, "p details mismatch: something has changed before execution");
         require(put.expiry > now, "p: This put is already expired");
@@ -356,7 +354,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
 
     
 
-    function buyOptionFromAsk(uint _p, uint _q, uint _price) public nonReentrant {
+    function buyOptionFromAsk(uint _p, uint _q, uint _price) external nonReentrant {
         calculateDifferences();
         Put storage openShort = puts[_p];
         Put storage ask = puts[_q];
@@ -393,7 +391,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
 
 
     
-    function setPrice(uint _p, uint _price, bool _tradeable) public {
+    function setPrice(uint _p, uint _price, bool _tradeable) external {
         Put storage put = puts[_p];
         require((msg.sender == put.long && msg.sender == put.short && _tradeable) || (msg.sender == put.long && put.open), "p: you cant change the price");
         require(put.expiry > now, "p: already expired");
@@ -405,7 +403,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
 
     
     
-    function buyOpenOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) public nonReentrant {
+    function buyOpenOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(put.strike == _strike && put.assetAmt == _assetAmt && put.price == _price && put.expiry == _expiry, "p details mismatch: something has changed before execution");
@@ -430,7 +428,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
    
-    function exercise(uint _p) public nonReentrant {
+    function exercise(uint _p) external nonReentrant {
         calculateDifferences();
         Put storage put = puts[_p];
         require(put.open, "p: This isnt open");
@@ -450,7 +448,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
 
     
-    function cashClose(uint _p) public nonReentrant {
+    function cashClose(uint _p) external nonReentrant {
         calculateDifferences();
         require(cashCloseOn, "p: This is not setup to cash close");
         Put storage put = puts[_p];
@@ -476,7 +474,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
    
 
 
-    function returnExpired(uint[] memory _puts) public nonReentrant {
+    function returnExpired(uint[] memory _puts) external nonReentrant {
         calculateDifferences();
         uint _totalPurchaseLocked;
         for (uint i; i < _puts.length; i++) {
@@ -493,7 +491,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     }
     
     
-    function rollExpired(uint[] memory _puts, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) payable public {
+    function rollExpired(uint[] memory _puts, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) external {
         calculateLastBalances();
         uint _totalAssetAmount;
         uint _totalPurchaseLocked;

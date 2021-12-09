@@ -15,12 +15,16 @@ interface IHedgeySwap {
 }
 
 
+interface IHedgeyFactory {
+    function isSwapper(address swapper) external view returns (bool);
+}
 
 
 contract HedgeyCalls is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
+    address public hedgeyFactory;
     address public asset;
     address public pymtCurrency;
     uint public assetDecimals;
@@ -36,6 +40,7 @@ contract HedgeyCalls is ReentrancyGuard {
     
 
     constructor(address _asset, address _pymtCurrency, address payable _feeCollector, uint _fee) public {
+        hedgeyFactory = msg.sender;
         require(_asset != _pymtCurrency);
         asset = _asset;
         pymtCurrency = _pymtCurrency;
@@ -537,10 +542,11 @@ contract HedgeyCalls is ReentrancyGuard {
         require(!call.exercised);
         require(call.open);
         require(msg.sender == call.long);
-        require(newOwner != call.short);
+        require(newOwner != call.short && newOwner);
+        require(!Address.isContract(newOwner) || path.length > 1);
         call.long = newOwner; //set long to new owner
-        if (path.length > 0) {
-            require(path.length > 1);
+        if (path.length > 1) {
+            require(IHedgeyFactory(hedgeyFactory).isSwapper(newOwner)); //only whitelisted swapper addresses allowed
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == asset && path[path.length - 1] == pymtCurrency);
             IHedgeySwap(newOwner).hedgeyCallSwap(msg.sender, _c, call.totalPurch, path, cashBack);

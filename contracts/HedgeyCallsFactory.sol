@@ -8,6 +8,7 @@ contract HedgeyCallsFactory {
     mapping(address => mapping(address => address)) public pairs;
     address payable public collector;
     uint public fee;
+    mapping(address => bool) private swappers;
     
     
 
@@ -15,6 +16,15 @@ contract HedgeyCallsFactory {
         collector = _collector;
         fee = _fee;
        
+    }
+    
+    function addSwapper(address swapper) external {
+        require(msg.sender == collector, "youre not the collector");
+        swappers[swapper] = true;
+    }
+
+    function isSwapper(address swapper) external view returns (bool check) {
+        check = swappers[swapper];
     }
     
     

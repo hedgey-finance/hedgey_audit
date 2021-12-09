@@ -18,11 +18,15 @@ interface IHedgeySwap {
 }
 
 
+interface IHedgeyFactory {
+    function isSwapper(address swapper) external view returns (bool);
+}
 
 contract HedgeyPuts is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
+    address hedgeyFactory;
     address public asset; 
     address public pymtCurrency; 
     uint public assetDecimals;
@@ -38,6 +42,7 @@ contract HedgeyPuts is ReentrancyGuard {
     
 
     constructor(address _asset, address _pymtCurrency, address payable _feeCollector, uint _fee) public {
+        hedgeyFactory = msg.sender;
         require(_asset != _pymtCurrency);
         asset = _asset;
         pymtCurrency = _pymtCurrency;
@@ -520,9 +525,10 @@ contract HedgeyPuts is ReentrancyGuard {
         require(put.open, "p: only open puts can be swapped");
         require(msg.sender == put.long, "p: You dont own this put");
         require(newOwner != put.short, "p: you cannot transfer to the short");
+        require(!Address.isContract(newOwner) || path.length > 1);
         put.long = newOwner; //set long to new owner
-        if (path.length > 0) {
-            require(path.length > 1, "use the normal cash close method for single pool swaps");
+        if (path.length > 1) {
+            require(IHedgeyFactory(hedgeyFactory).isSwapper(newOwner));
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == pymtCurrency && path[path.length - 1] == asset, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyPutSwap(msg.sender, _p, put.assetAmt, path);

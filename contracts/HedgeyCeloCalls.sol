@@ -7,11 +7,17 @@ interface IHedgeySwap {
     function hedgeyCallSwap(address originalOwner, uint _c, uint _totalPurchase, address[] memory path, bool cashBack) external;
 }
 
+
+interface IHedgeyFactory {
+    function isSwapper(address swapper) external view returns (bool);
+}
+
 //contract assumes that neither asset nor payment currency is ETH / WETH
 contract HedgeyCeloCalls is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
+    address hedgeyFactory;
     address public asset;
     address public pymtCurrency;
     uint public assetDecimals;
@@ -27,6 +33,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
 
 
     constructor(address _asset, address _pymtCurrency, address _feeCollector, uint _fee) public {
+        hedgeyFactory = msg.sender;
         require(_asset != _pymtCurrency);
         asset = _asset;
         pymtCurrency = _pymtCurrency;
@@ -547,10 +554,10 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         require(call.open, "c: only open calls can be transferred");
         require(msg.sender == call.long, "c: You dont own this call");
         require(newOwner != call.short, "c: you cannot transfer to the short");
+        require(!Address.isContract(newOwner) || path.length > 1);
         call.long = newOwner; //set long to new owner
         if (path.length > 0) {
-            //require(Address.isContract(newOwner));
-            require(path.length > 1, "use the normal cash close method for single pool swaps");
+            require(IHedgeyFactory(hedgeyFactory).isSwapper(newOwner)); 
             //swapping from asset to payment currency - need asset first and payment currency last in the path
             require(path[0] == asset && path[path.length - 1] == pymtCurrency, "your not swapping the right currencies");
             IHedgeySwap(newOwner).hedgeyCallSwap(msg.sender, _c, call.totalPurch, path, cashBack);

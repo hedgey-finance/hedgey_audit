@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 pragma solidity ^0.6.12;
 
 
-import ./libraries.sol
+import "./libraries.sol"
 
 interface IHedgeySwap {
     function hedgeySwap(address originalOwner, uint _c, uint totalPurchase, address[] memory path, bool cashBack) external;

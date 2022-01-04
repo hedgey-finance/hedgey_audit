@@ -15,6 +15,8 @@ Each time a new pair is created, it is done so via the factory, which deploys a 
 **xDAI (Gnosis) Network**
 
 Calls Factory Address: 0x24f4BC74C00412422C9D2A7c78033fc8Aea8Da18
-Puts Factory Address:
+
+
 WETH Address (wxDAI): 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d
+
 HoneySwap AMM Address: 0xA818b4F111Ccac7AA31D0BCc0806d64F2E0737D7

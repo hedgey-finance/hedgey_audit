@@ -13,17 +13,13 @@ Each time a new pair is created, it is done so via the factory, which deploys a 
 # Active deployments:
 
 **Rinkeby TestNet**
-Calls Factory Address: 0xe4231602128EDF7CD100F62c1D70CB246811e170
-
+Calls Factory Address: 0xe4231602128EDF7CD100F62c1D70CB246811e170      
 WETH Address: 0xc778417E063141139Fce010982780140Aa0cD5Ab              
 UniswapV2 Factory: 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 
 
 **xDAI (Gnosis) Network**
 
-Calls Factory Address: 0x24f4BC74C00412422C9D2A7c78033fc8Aea8Da18
-
-
-WETH Address (wxDAI): 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d
-
+Calls Factory Address: 0x24f4BC74C00412422C9D2A7c78033fc8Aea8Da18        
+WETH Address (wxDAI): 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d      
 HoneySwap AMM Address: 0xA818b4F111Ccac7AA31D0BCc0806d64F2E0737D7

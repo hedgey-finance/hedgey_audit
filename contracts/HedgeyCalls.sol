@@ -543,7 +543,7 @@ contract HedgeyCalls is ReentrancyGuard {
         require(!call.exercised);
         require(call.open);
         require(msg.sender == call.long);
-        require(newOwner != call.short && newOwner);
+        require(newOwner != call.short);
         require(!Address.isContract(newOwner) || path.length > 1);
         call.long = newOwner; //set long to new owner
         if (path.length > 1) {

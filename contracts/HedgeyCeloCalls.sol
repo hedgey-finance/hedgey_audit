@@ -537,7 +537,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
             depositPymt(asset, msg.sender, _assetAmount.sub(_totalAssetAmount));
         }
         calls[c++] = Call(msg.sender, _assetAmount, _minimumPurchase, _newStrike, _totalPurch, _newPrice, _newExpiry, false, true, msg.sender, false);
-        emit NewAsk(c.sub(1), _assetAmount, _minimumPurchase, _newStrike, _newPrice, _newExpiry);
+        emit NewAsk(c.sub(1), msg.sender, _assetAmount, _minimumPurchase, _newStrike, _newPrice, _newExpiry);
         calculateDifferences();
     }
 

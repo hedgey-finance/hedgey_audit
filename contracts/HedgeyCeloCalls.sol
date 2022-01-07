@@ -156,7 +156,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         require(balCheck >= _price, "c: not enough cash to bid");
         depositPymt(pymtCurrency, msg.sender, _price); 
         calls[c++] = Call(address(0x0), _assetAmt, _assetAmt, _strike, _totalPurch, _price, _expiry, false, true, msg.sender, false);
-        emit NewBid(c.sub(1), _assetAmt, _assetAmt, _strike, _price, _expiry);
+        emit NewBid(c.sub(1), msg.sender, _assetAmt, _assetAmt, _strike, _price, _expiry);
         calculateLastBalances();
     }
     
@@ -235,7 +235,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         call.short = msg.sender;
         call.tradeable = false;
         call.open = true;
-        emit NewOptionSold(_c);
+        emit NewOptionSold(_c, msg.sender);
         calculateLastBalances();
     }
 
@@ -308,7 +308,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         require(balCheck >= _assetAmt, "c: not enough to sell this call option");
         depositPymt(asset, msg.sender, _assetAmt);
         calls[c++] = Call(msg.sender, _assetAmt, _minimumPurchase, _strike, _totalPurch, _price, _expiry, false, true, msg.sender, false);
-        emit NewAsk(c.sub(1), _assetAmt, _minimumPurchase, _strike, _price, _expiry);
+        emit NewAsk(c.sub(1), msg.sender, _assetAmt, _minimumPurchase, _strike, _price, _expiry);
         calculateLastBalances();
     }
 
@@ -347,7 +347,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
             call.open = true;
             call.long = msg.sender;
             call.tradeable = false;
-            emit NewOptionBought(_c);
+            emit NewOptionBought(_c, msg.sender);
         } else {
             uint pricePerToken = call.price.mul(10 ** 32).div(call.assetAmt);
             uint proRataPrice = _assetAmt.mul(pricePerToken).div(10 ** 32);
@@ -358,7 +358,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
             uint proRataTotalPurchase = _assetAmt.mul(_strike).div(10 ** assetDecimals);
             transferPymtWithFee(pymtCurrency, msg.sender, call.short, proRataPrice);
             calls[c++] = Call(call.short, _assetAmt, call.minimumPurchase, call.strike, proRataTotalPurchase, _price, _expiry, true, false, msg.sender, false);
-            emit PoolOptionBought(_c, c.sub(1), _assetAmt, _strike, _price, _expiry);
+            emit PoolOptionBought(_c, c.sub(1), msg.sender, _assetAmt, _strike, _price, _expiry);
             //update the current call to become the remainder
             call.assetAmt -= _assetAmt;
             call.price -= _price;
@@ -441,7 +441,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
         }
         call.tradeable = false;
         call.long = msg.sender;
-        emit OpenOptionPurchased(_c);
+        emit OpenOptionPurchased(_c, msg.sender);
         calculateLastBalances();
     }
 
@@ -593,19 +593,19 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     }
 
     /***events*****/
-    event NewBid(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
-    event NewAsk(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
-    event NewOptionSold(uint _i);
-    event NewOptionBought(uint _i);
+    event NewBid(uint _i, address _long, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event NewAsk(uint _i, address _long, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
+    event NewOptionSold(uint _i, address _short);
+    event NewOptionBought(uint _i, address _long);
     event OpenOptionSold(uint _i, uint _j, address _long, uint _price);
     event OpenShortRePurchased(uint _i, uint _j, address _short, uint _price);
-    event OpenOptionPurchased(uint _i);
+    event OpenOptionPurchased(uint _i, address _long);
     event OptionChanged(uint _i, uint _assetAmt, uint _minimumPurchase, uint _strike, uint _price, uint _expiry);
     event PriceSet(uint _i, uint _price, bool _tradeable);
     event OptionExercised(uint _i, bool _cashClosed);
     event OptionReturned(uint _i);
     event OptionCancelled(uint _i);
     event OptionTransferred(uint _i, address _newOwner);
-    event PoolOptionBought(uint _i, uint _j, uint _assetAmt, uint _strike, uint _price, uint _expiry);
+    event PoolOptionBought(uint _i, uint _j, address _long, uint _assetAmt, uint _strike, uint _price, uint _expiry);
     event AMMUpdate(bool _cashCloseOn);
 }

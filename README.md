@@ -24,54 +24,55 @@ Calls Factory Address: 0xaAC188A6B1c94d518cECB605377a5B61b0D8410F
 WETH Address (wxDAI): 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d      
 HoneySwap AMM Address: 0xA818b4F111Ccac7AA31D0BCc0806d64F2E0737D7
 
-**ETHEREUM MAINNET** 
+**ETHEREUM MAINNET**  
+
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**POLYGON NETWORK** 
+**POLYGON NETWORK**   
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
-**FANTOM NETWORK** 
-Calls Factory Address:   
-WETH Address:   
-AMM Factory Address: 
-
-
-**CELO MAINNET** 
+**FANTOM NETWORK**   
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**BINANCE SMART CHAIN** 
+**CELO MAINNET**   
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+ 
+**BINANCE SMART CHAIN**   
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**AVALANCHE C-CHAIN** 
+**AVALANCHE C-CHAIN**    
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**OEC NETWORK** 
+**OEC NETWORK**    
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**HARMONY NETWORK** 
+**HARMONY NETWORK**    
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 
 
 
-**MOONRIVER MAINNET** 
+**MOONRIVER MAINNET**    
 Calls Factory Address:   
 WETH Address:   
 AMM Factory Address: 

@@ -23,3 +23,55 @@ UniswapV2 Factory: 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f
 Calls Factory Address: 0xaAC188A6B1c94d518cECB605377a5B61b0D8410F        
 WETH Address (wxDAI): 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d      
 HoneySwap AMM Address: 0xA818b4F111Ccac7AA31D0BCc0806d64F2E0737D7
+
+**ETHEREUM MAINNET** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**POLYGON NETWORK** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+**FANTOM NETWORK** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**CELO MAINNET** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**BINANCE SMART CHAIN** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**AVALANCHE C-CHAIN** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**OEC NETWORK** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**HARMONY NETWORK** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 
+
+
+**MOONRIVER MAINNET** 
+Calls Factory Address:   
+WETH Address:   
+AMM Factory Address: 

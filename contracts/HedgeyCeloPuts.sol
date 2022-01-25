@@ -324,7 +324,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     
     function buyNewOption(uint _p, uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         Put storage put = puts[_p];
-        require(put.strike == _strike && _assetAmt > 0 && put.price == _price && put.expiry == _expiry, "p details mismatch: something has changed before execution");
+        require(put.strike == _strike && put.expiry == _expiry, "p details mismatch: something has changed before execution");
         require(put.expiry > now, "p: This put is already expired");
         require(!put.exercised, "p: This has already been exercised");
         require(put.tradeable, "p: this is not ready to trade");

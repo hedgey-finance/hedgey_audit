@@ -331,7 +331,7 @@ contract HedgeyCeloCalls is ReentrancyGuard {
     //, uint _strike, uint _assetAmt, uint _price, uint _expiry
     function buyNewOption(uint _c, uint _assetAmt, uint _strike, uint _price, uint _expiry) external {
         Call storage call = calls[_c];
-        require(call.strike == _strike && _assetAmt > 0 && call.price == _price && call.expiry == _expiry, "c details issue: something changed");
+        require(call.strike == _strike && call.expiry == _expiry, "c details issue: something changed");
         require(msg.sender != call.short, "c: you cannot buy this");
         require(call.short != address(0x0) && call.short == call.long, "c: this option is not a new ask");
         require(call.expiry > now, "c: This call is already expired");

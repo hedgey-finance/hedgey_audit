@@ -18,7 +18,7 @@ interface IHedgey {
 }
 
 
-contract HedgeyAnySwap is ReentrancyGuard {
+contract AnySwap is ReentrancyGuard {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
     
@@ -31,7 +31,8 @@ contract HedgeyAnySwap is ReentrancyGuard {
         fee = _fee;
     }
 
-    
+
+
     function sortTokens(address tokenA, address tokenB) internal view returns (address token0, address token1) {
         require(tokenA != tokenB, 'UniswapV2Library: IDENTICAL_ADDRESSES');
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
@@ -88,6 +89,20 @@ contract HedgeyAnySwap is ReentrancyGuard {
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
     
+    //function to swap from this contract to uniswap pool
+    function swapOut(address tokenIn, address tokenOut, uint _in, address to) internal {
+        address pair = IUniswapV2Factory(factory).getPair(tokenIn, tokenOut);
+        (uint reserveIn, uint reserveOut) = getReserves(tokenIn, tokenOut);
+        uint out = getAmountOut(_in, reserveIn, reserveOut);
+        SafeERC20.safeTransfer(IERC20(tokenIn), pair, _in); //sends the asset amount in to the swap
+        address token0 = IUniswapV2Pair(pair).token0();
+        if (tokenIn == token0) {
+            IUniswapV2Pair(pair).swap(0, out, to, new bytes(0));
+        } else {
+            IUniswapV2Pair(pair).swap(out, 0, to, new bytes(0));
+        }
+        
+    }
     
     
     //function to swap from this contract to uniswap pool
@@ -105,13 +120,13 @@ contract HedgeyAnySwap is ReentrancyGuard {
     
     
     function multiSwap(address[] memory path, uint amountOut, uint amountIn, address to) internal {
-       require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
-       require((amountOut > 0 && amountIn == 0) || (amountIn > 0 && amountOut == 0), "one of the amounts must be 0");
-       uint[] memory amounts = (amountOut > 0) ? getAmountsIn(amountOut, path) : getAmountsOut(amountIn, path);
-       for (uint i = 0; i < path.length - 1; i++) {
-           address _to = (i < path.length - 2) ? IUniswapV2Factory(factory).getPair(path[i+1], path[i+2]) : to;
-           swap((i == 0), path[i], path[i+1], amounts[i], amounts[i+1], _to);
-       }
+        require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
+        require((amountOut > 0 && amountIn == 0) || (amountIn > 0 && amountOut == 0), "one of the amounts must be 0");
+        uint[] memory amounts = (amountOut > 0) ? getAmountsIn(amountOut, path) : getAmountsOut(amountIn, path);
+        for (uint i = 0; i < path.length - 1; i++) {
+            address _to = (i < path.length - 2) ? IUniswapV2Factory(factory).getPair(path[i+1], path[i+2]) : to;
+            swap((i == 0), path[i], path[i+1], amounts[i], amounts[i+1], _to);
+        }
     }
     
     
@@ -130,22 +145,32 @@ contract HedgeyAnySwap is ReentrancyGuard {
     
     
     function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) external {
-        
+        //assume we've received the amount needed to exercise the call with was amountOut from tokenOut above
         address token0 = IUniswapV2Pair(msg.sender).token0(); // fetch the address of token0
         address token1 = IUniswapV2Pair(msg.sender).token1(); // fetch the address of token1
         (uint reserveA, uint reserveB) = getReserves(token0, token1);
         assert(msg.sender == IUniswapV2Factory(factory).getPair(token0, token1));
-        (address _hedgey, uint _n, address[] memory path, bool optionType) = abi.decode(data, (address, uint, address[], bool));
-        
+        (address payable _hedgey, uint _n, address[] memory path, bool optionType, bool directSwap) = abi.decode(data, (address, uint, address[], bool, bool));
+        //the final param distinguishes calls vs puts, a 0 == call, 1 == put
         uint amountDue = amount0 == 0 ? getAmountIn(amount1, reserveA, reserveB) : getAmountIn(amount0, reserveB, reserveA);
         uint purchase = amount0 == 0 ? amount1 : amount0;
         if (optionType) {
             (address asset) = exerciseCall(_hedgey, _n, purchase); //exercises the call given the input data
-            multiSwap(path, amountDue, 0, msg.sender);
+            //require(IERC20(asset).balanceOf(address(this)) > amountDue, "there is not enough asset to convert");
+            if (directSwap) {
+                SafeERC20.safeTransfer(IERC20(asset), msg.sender, amountDue);
+            } else {
+                multiSwap(path, amountDue, 0, msg.sender);
+            }
         } else {
             // must be a put
             (address paymentCurrency) = exercisePut(_hedgey, _n, purchase);
-            multiSwap(path, amountDue, 0, msg.sender);
+            //require(IERC20(paymentCurrency).balanceOf(address(this)) > amountDue, "not enough cash to payback the short");
+            if (directSwap) {
+                SafeERC20.safeTransfer(IERC20(paymentCurrency), msg.sender, amountDue);
+            } else {
+                multiSwap(path, amountDue, 0, msg.sender);
+            }
         }
         
         
@@ -153,53 +178,61 @@ contract HedgeyAnySwap is ReentrancyGuard {
     
     
     
-    function exerciseCall(address hedgeyCalls, uint _c, uint purchase) internal returns (address asset) {
-        
-        SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyCalls).pymtCurrency()), hedgeyCalls, purchase); //approve that we can spend the payment currency
-        IHedgey(hedgeyCalls).exercise(_c); //exercise call - gives us back the asset
+    function exerciseCall(address payable hedgeyCalls, uint _c, uint purchase) internal returns (address asset) {
+        SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyCalls).pymtCurrency()), hedgeyCalls, purchase);
+        IHedgey(hedgeyCalls).exercise(_c);
         asset = IHedgey(hedgeyCalls).asset();
-        
     }
     
     
-    function exercisePut(address hedgeyPuts, uint _p, uint purchase) internal returns (address paymentCurrency) {
-        
-        SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyPuts).asset()), hedgeyPuts, purchase); //approve that we can spend the payment currency
+    function exercisePut(address payable hedgeyPuts, uint _p, uint sale) internal returns (address paymentCurrency) {
+        SafeERC20.safeIncreaseAllowance(IERC20(IHedgey(hedgeyPuts).asset()), hedgeyPuts, sale); //approve that we can spend the payment currency
         IHedgey(hedgeyPuts).exercise(_p);
         paymentCurrency = IHedgey(hedgeyPuts).pymtCurrency();
         
     }
     
     
-    function hedgeyCallSwap(address originalOwner, uint _c, uint totalPurchase, address[] memory path, bool cashBack) external nonReentrant {
-   
-        address[] memory _path = new address[](path.length - 1);
-        for (uint i; i < path.length - 1; i++) {
-            _path[i] = path[i];
-        }
-        bytes memory data = abi.encode(msg.sender, _c, _path, true);
-        flashSwap(path[path.length - 2], path[path.length - 1], totalPurchase, data);
-        
-        if(cashBack) {
-            
-            multiSwap(path, 0, IERC20(path[0]).balanceOf(address(this)), originalOwner);
+    function hedgeyCallSwap(address payable originalOwner, uint _c, uint totalPurchase, address[] memory path, bool cashBack) external payable nonReentrant {
+        bytes memory data;
+        if (path.length == 2) {
+            data = abi.encode(msg.sender, _c, path, true, true);
         } else {
-            SafeERC20.safeTransfer(IERC20(path[0]), originalOwner, IERC20(path[0]).balanceOf(address(this)));
+            address[] memory _path = new address[](path.length - 1);
+            for (uint i; i < path.length - 1; i++) {
+                _path[i] = path[i];
+            }
+            data = abi.encode(msg.sender, _c, _path, true, false);
+        }
+        flashSwap(path[path.length - 2], path[path.length - 1], totalPurchase, data);
+        //then we send the profits to the original owner
+        if(cashBack) {
+            //swap again converting remaining asset into cash and delivering that out
+            if (path.length == 2) {
+                swapOut(path[0], path[1], IERC20(path[0]).balanceOf(address(this)), originalOwner);
+            } else {
+                multiSwap(path, 0, IERC20(path[0]).balanceOf(address(this)), originalOwner);
+            }
+        } else {
+            SafeERC20.safeTransfer(IERC20(path[0]), originalOwner, IERC20(path[0]).balanceOf(address(this))); 
         }
     }
     
-    function hedgeyPutSwap(address originalOwner, uint _p, uint assetAmount, address[] memory path) external nonReentrant {
-        
-        address[] memory _path = new address[](path.length - 1);
-        for (uint i; i < path.length - 1; i++) {
-            _path[i] = path[i];
+    function hedgeyPutSwap(address payable originalOwner, uint _p, uint assetAmount, address[] memory path) external payable nonReentrant {
+        bytes memory data;
+        if (path.length == 2) {
+            data = abi.encode(msg.sender, _p, path, false, true);
+        } else {
+            //path goes from payment currency → intermediary → asset
+            address[] memory _path = new address[](path.length - 1);
+            for (uint i; i < path.length - 1; i++) {
+                _path[i] = path[i];
+            }
+            data = abi.encode(msg.sender, _p, _path, false, false);
         }
-        bytes memory data = abi.encode(msg.sender, _p, _path, false);
         flashSwap(path[path.length - 2], path[path.length - 1], assetAmount, data);
         SafeERC20.safeTransfer(IERC20(path[0]), originalOwner, IERC20(path[0]).balanceOf(address(this)));
     }
     
     
 }
-
-

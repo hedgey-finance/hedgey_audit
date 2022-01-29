@@ -59,14 +59,14 @@ AMM Factory Address: 0xefa94DE7a4656D787667C749f7E1223D71E9FD88
 
 
 **OEC NETWORK**    
-Calls Factory Address:   
+Calls Factory Address: 0x883dF73ccBaAD7B7C56202D586423F520D8b3300    
 WETH Address: 0x8F8526dbfd6E38E3D8307702cA8469Bae6C56C15    
 AMM Factory Address: 0x709102921812B3276A65092Fe79eDfc76c4D4AFe  
 
 
 **HARMONY NETWORK**    
 Calls Factory Address:   
-WETH Address:   
+WETH Address: 0xcf664087a5bb0237a0bad6742852ec6c8d69a27a
 AMM Factory Address: 
 
 

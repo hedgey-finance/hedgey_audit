@@ -47,9 +47,9 @@ AMM Factory Address: 0x62d5b84bE28a183aBB507E125B384122D2C25fAE
 
  
 **BINANCE SMART CHAIN**   
-Calls Factory Address:   
+Calls Factory Address: 0xaA3AD779d00F9fb79c892f00cc7695e40569209A     
 WETH Address: 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c        
-AMM Factory Address: 0xBCfCcbde45cE874adCB698cC183deBcF17952812     
+AMM Factory Address: 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73     
 
 
 **AVALANCHE C-CHAIN**    

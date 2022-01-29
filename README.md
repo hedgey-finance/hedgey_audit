@@ -66,7 +66,7 @@ AMM Factory Address: 0x709102921812B3276A65092Fe79eDfc76c4D4AFe
 
 **HARMONY NETWORK**    
 Calls Factory Address:   
-WETH Address: 0xcf664087a5bb0237a0bad6742852ec6c8d69a27a
+WETH Address: 0xcf664087a5bb0237a0bad6742852ec6c8d69a27a     
 AMM Factory Address: 
 
 

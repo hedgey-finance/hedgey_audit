@@ -66,8 +66,8 @@ AMM Factory Address: 0x709102921812B3276A65092Fe79eDfc76c4D4AFe
 
 **HARMONY NETWORK**    
 Calls Factory Address:   
-WETH Address: 0xcf664087a5bb0237a0bad6742852ec6c8d69a27a     
-AMM Factory Address: 
+WETH Address: 0xcF664087a5bB0237a0BAd6742852ec6c8d69A27a        
+AMM Factory Address: 0x9014b937069918bd319f80e8b3bb4a2cf6faa5f7 (defi kingdoms)
 
 
 **MOONRIVER MAINNET**    

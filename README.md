@@ -44,7 +44,7 @@ SpookySwap AMM: 0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3
 
 
 **CELO MAINNET**   
-Calls Factory Address: 0x322a7b806D78D407449dA536BedfA50E2a3dCCcC      
+Calls Factory Address:       
 AMM Factory Address: 0x62d5b84bE28a183aBB507E125B384122D2C25fAE
 
  

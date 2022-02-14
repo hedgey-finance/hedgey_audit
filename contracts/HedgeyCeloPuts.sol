@@ -500,7 +500,7 @@ contract HedgeyCeloPuts is ReentrancyGuard {
     
     
     function rollExpired(uint[] memory _puts, uint _assetAmount, uint _minimumPurchase, uint _newStrike, uint _newPrice, uint _newExpiry) external {
-        calculateLastBalances();
+        calculateDifferences();
         uint _totalAssetAmount;
         uint _totalPurchaseLocked;
         for (uint i; i < _puts.length; i++) {
